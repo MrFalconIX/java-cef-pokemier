@@ -11,7 +11,11 @@ extern "C" {
  * Class:     org_cef_browser_CefBrowser_N
  * Method:    N_CreateBrowser
  * Signature:
- * (Lorg/cef/handler/CefClientHandler;JLjava/lang/String;ZZLjava/awt/Component;Lorg/cef/browser/CefRequestContext;Lorg/cef/CefBrowserSettings;)Z
+ * (Lorg/cef/handler/CefClientHandler;JLjava/lang/String;ZZLorg/cef/browser/CefRequestContext;Lorg/cef/CefBrowserSettings;)Z
+ *
+ * Pokémier (2026-11-20): the declaration now matches the definition in CefBrowser_N.cpp (no java.awt.Component, removed for
+ * MCEF). With one jobject too many it was another function: the definition got C++ linkage, was exported under a mangled name
+ * and Java could not find N_CreateBrowser (UnsatisfiedLinkError).
  */
 JNIEXPORT jboolean JNICALL
 Java_org_cef_browser_CefBrowser_1N_N_1CreateBrowser(JNIEnv*,
@@ -21,7 +25,6 @@ Java_org_cef_browser_CefBrowser_1N_N_1CreateBrowser(JNIEnv*,
                                                     jstring,
                                                     jboolean,
                                                     jboolean,
-                                                    jobject,
                                                     jobject,
                                                     jobject);
 
