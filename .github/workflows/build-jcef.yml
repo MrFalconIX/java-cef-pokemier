@@ -1,6 +1,6 @@
-# Pokémier (2026-11-20): builds java-cef for each platform and publishes the archives as a GitHub Release whose tag is the
-# commit's hash (the original uploaded them to CinemaMod's S3 bucket). MCEF (Pokémier build) downloads them from:
-#   https://github.com/<owner>/<repo>/releases/download/<commit>/<platform>.tar.gz   (and .tar.gz.sha256)
+# Pokémier (2026-11-20): builds java-cef for each platform and publishes the archives as a GitHub Release whose tag is "jcef-" + the
+# commit hash (GitHub refuses tags of 40 hex characters; the original uploaded them to CinemaMod's S3 bucket). MCEF (Pokémier build) downloads them from:
+#   https://github.com/<owner>/<repo>/releases/download/jcef-<commit>/<platform>.tar.gz   (and .tar.gz.sha256)
 # The .sha256 files have the same form on every platform: "<hash>  <file>".
 name: Build java-cef
 
@@ -37,7 +37,7 @@ jobs:
       - name: Publish
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.sha }}
+          tag_name: jcef-${{ github.sha }}
           name: java-cef ${{ github.sha }}
           files: |
             jcef_build/linux_${{ matrix.platform }}.tar.gz
@@ -68,7 +68,7 @@ jobs:
       - name: Publish
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.sha }}
+          tag_name: jcef-${{ github.sha }}
           name: java-cef ${{ github.sha }}
           files: |
             jcef_build/windows_${{ matrix.platform }}.tar.gz
@@ -92,7 +92,7 @@ jobs:
       - name: Publish
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.sha }}
+          tag_name: jcef-${{ github.sha }}
           name: java-cef ${{ github.sha }}
           files: |
             jcef_build/macos_${{ matrix.platform }}.tar.gz
