@@ -2,6 +2,11 @@
 # commit hash (GitHub refuses tags of 40 hex characters; the original uploaded them to CinemaMod's S3 bucket). MCEF (Pokémier build) downloads them from:
 #   https://github.com/<owner>/<repo>/releases/download/jcef-<commit>/<platform>.tar.gz   (and .tar.gz.sha256)
 # The .sha256 files have the same form on every platform: "<hash>  <file>".
+#
+# Windows uses Python 3.10 and Java 17, as Linux does: the configure step runs java-cef's Python scripts (the version header,
+# clang-format from Google Storage with gsutil), which fail with the newer Python of the Windows runner.
+# No macOS: the CEF build java-cef downloads (CinemaMod's server, branch 6478) does not exist for macOS (HTTP 403), and the
+# macos-13 runners the original used are gone.
 name: Build java-cef
 
 on:
@@ -17,6 +22,7 @@ jobs:
   java-cef-linux:
     runs-on: ubuntu-22.04
     strategy:
+      fail-fast: false
       matrix:
         platform: [amd64, arm64]
     steps:
@@ -46,18 +52,33 @@ jobs:
   java-cef-windows:
     runs-on: windows-2022
     strategy:
+      fail-fast: false
       matrix:
         platform: [amd64, arm64]
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        id: python
+        with:
+          python-version: '3.10'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
       - uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: ${{ matrix.platform == 'arm64' && 'amd64_arm64' || 'amd64' }}
       - name: Build
+        env:
+          PYTHON_EXECUTABLE: ${{ steps.python.outputs.python-path }}
         run: |
+          python --version
+          cmake --version
           mkdir jcef_build && cd jcef_build
           cmake -G "Ninja" -DPROJECT_ARCH=${{ matrix.platform }} -DCMAKE_BUILD_TYPE=Release ..
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           ninja -j4
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cd native
           ren Release windows_${{ matrix.platform }}
           cd ..
@@ -65,6 +86,11 @@ jobs:
           tar -czf windows_${{ matrix.platform }}.tar.gz windows_${{ matrix.platform }}
           $hash = (Get-FileHash -Algorithm SHA256 -Path "windows_${{ matrix.platform }}.tar.gz").Hash.ToLower()
           Set-Content -NoNewline -Encoding ascii -Path "windows_${{ matrix.platform }}.tar.gz.sha256" -Value "$hash  windows_${{ matrix.platform }}.tar.gz"
+      - name: Show the configure log
+        if: failure()
+        run: |
+          Get-Content jcef_build/CMakeFiles/CMakeOutput.log -Tail 60 -ErrorAction SilentlyContinue
+          Get-Content jcef_build/CMakeFiles/CMakeError.log -Tail 60 -ErrorAction SilentlyContinue
       - name: Publish
         uses: softprops/action-gh-release@v2
         with:
@@ -73,27 +99,3 @@ jobs:
           files: |
             jcef_build/windows_${{ matrix.platform }}.tar.gz
             jcef_build/windows_${{ matrix.platform }}.tar.gz.sha256
-
-  java-cef-macos:
-    runs-on: macos-13
-    strategy:
-      matrix:
-        platform: [amd64, arm64]
-    steps:
-      - uses: actions/checkout@v4
-      - run: |
-          brew install ninja coreutils
-          mkdir jcef_build && cd jcef_build
-          cmake -G "Ninja" -DPROJECT_ARCH=${{ matrix.platform }} -DCMAKE_BUILD_TYPE=Release ..
-          ninja -j4
-          mv native/Release macos_${{ matrix.platform }}
-          tar -czf macos_${{ matrix.platform }}.tar.gz macos_${{ matrix.platform }}
-          sha256sum macos_${{ matrix.platform }}.tar.gz > macos_${{ matrix.platform }}.tar.gz.sha256
-      - name: Publish
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: jcef-${{ github.sha }}
-          name: java-cef ${{ github.sha }}
-          files: |
-            jcef_build/macos_${{ matrix.platform }}.tar.gz
-            jcef_build/macos_${{ matrix.platform }}.tar.gz.sha256
